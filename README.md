@@ -25,10 +25,24 @@ with `source = companion`.
 
 ## Install
 
+Full instructions, including the napari plugin and troubleshooting, are in
+[INSTALL.md](INSTALL.md).
+
 ```bash
+# conda (recommended - brings napari and the Qt binding with it)
+conda env create -f environment.yml
+conda activate micromethods
+
+# or headless, for servers and batch pipelines
+conda env create -f environment-headless.yml
+
+# or into an environment you already have
 pip install -e ".[all]"          # everything
 pip install -e ".[zeiss,leica]"  # only what your unit needs
 ```
+
+napari only discovers plugins installed in its own environment, so install
+micromethods and napari into the same one.
 
 ## Use
 
