@@ -25,7 +25,10 @@ dependencies:
 
   # --- napari plugin ------------------------------------------------------
   - napari>=0.5
-  - pyqt                 # Qt binding; swap for pyside6 if you prefer
+  - pyside6              # Qt6 backend. napari deprecated PyQt5 (removal in
+                         # autumn 2026) and system theme detection needs Qt6.
+                         # If PySide6 misbehaves, `conda install pyqt` still
+                         # works for now.
   - npe2                 # plugin manifest tooling, used for verification
 
   # --- optional but recommended ------------------------------------------

@@ -1,0 +1,10 @@
+name: micromethods
+display_name: Microscopy methods reporter
+contributions:
+  commands:
+    - id: micromethods.make_widget
+      title: Methods reporter
+      python_name: micromethods._napari:methods_widget
+  widgets:
+    - command: micromethods.make_widget
+      display_name: Methods reporter

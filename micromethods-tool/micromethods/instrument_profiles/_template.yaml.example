@@ -1,0 +1,23 @@
+# Copy to ~/.micromethods/profiles/<your_instrument>.yaml and edit.
+# `micromethods report ... --save-profile <key>` writes one of these for you
+# from the answers you type the first time.
+key: my_confocal
+label: Zeiss LSM 980 - room B12
+
+match:
+  instrument_key: [zeiss_lsm_980]        # printed by `micromethods inspect`
+  fingerprint_contains: [lsm 980]
+  # objective_contains: "Plan-Apochromat 63x"
+
+values:
+  stand.manufacturer: Carl Zeiss Microscopy
+  stand.model: Axio Observer 7 with LSM 980
+  stand.stand_type: inverted
+  stand.modality: point-scanning confocal
+  stand.modules: Airyscan 2 detector unit
+  stand.magnification_changer: none
+  software.name: ZEN blue
+  software.developer: Carl Zeiss Microscopy
+
+channel_values:
+  detector.manufacturer: Carl Zeiss Microscopy

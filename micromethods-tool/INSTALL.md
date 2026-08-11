@@ -38,7 +38,14 @@ conda env create -f environment.yml
 conda activate micromethods
 
 python -m pip install -e .
+
+# confirm the code, not just the metadata, was installed
+python -c "import micromethods; print(micromethods.__file__)"
 ```
+
+That last check matters: `pip install -e .` run from the wrong directory can
+report success while installing nothing importable. The path it prints must
+point into your project folder.
 
 The environment file pins Python 3.11, pulls napari and its Qt binding from
 conda-forge, installs the TIFF codecs, and adds the two vendor readers.
@@ -177,6 +184,29 @@ The reader tries pylibCZIrw, then aicspylibczi, then czifile, and only raises
 if none is importable. If none installs, convert to OME-TIFF with Bio-Formats'
 `bfconvert` and use the generic reader.
 
+**napari logs `'micromethods' could not be imported: No module named 'micromethods'`.**
+The distribution metadata is installed (napari found the entry point) but the
+package itself is not — `pip install -e .` was run from a directory that does
+not contain the `micromethods/` package folder. Check where the install points:
+
+```bash
+conda activate micromethods
+pip show micromethods            # look at "Editable project location"
+python -c "import micromethods; print(micromethods.__file__)"
+```
+
+Reinstall from the folder that holds `pyproject.toml` **and** `micromethods/`
+side by side:
+
+```bash
+pip uninstall -y micromethods
+cd <that folder>
+python -m pip install -e .
+python -c "import micromethods; print(micromethods.__file__)"
+```
+
+Then restart napari; manifests are only read at startup.
+
 **The plugin does not appear in napari.**
 Check both are in the same environment:
 
@@ -196,6 +226,20 @@ pip, and do not mix bindings in one environment:
 ```bash
 conda install -c conda-forge --force-reinstall pyqt
 ```
+
+**`napari support for the PyQt5 backend is deprecated` / `System theme detection requires a Qt6 backend`.**
+Both are warnings, not errors — napari runs fine on PyQt5 today, but support
+ends in autumn 2026. Move the environment to Qt6:
+
+```bash
+conda activate micromethods
+conda install -c conda-forge pyside6
+conda remove pyqt qt-main --force      # avoid two bindings in one environment
+```
+
+conda-forge ships PySide6 but not PyQt6, so PySide6 is the Qt6 route here.
+Never leave two Qt bindings installed at once; napari picks one at random and
+the symptoms are baffling.
 
 On headless Linux (SSH, containers), a GUI cannot open at all — use the CLI, or
 forward X11. `QT_QPA_PLATFORM=offscreen` only helps for automated tests.

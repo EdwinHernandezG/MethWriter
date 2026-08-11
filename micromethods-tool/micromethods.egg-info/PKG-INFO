@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: micromethods
+Version: 0.1.0
+Summary: Extract microscopy metadata and draft QUAREP-LiMi compliant methods sections
+Requires-Python: >=3.9
+Requires-Dist: tifffile>=2023.7.10
+Requires-Dist: PyYAML>=6.0
+Provides-Extra: zeiss
+Requires-Dist: pylibCZIrw>=4.0; extra == "zeiss"
+Provides-Extra: leica
+Requires-Dist: readlif>=0.6.5; extra == "leica"
+Provides-Extra: ome
+Requires-Dist: ome-types>=0.4; extra == "ome"
+Provides-Extra: napari
+Requires-Dist: napari>=0.4.18; extra == "napari"
+Requires-Dist: qtpy; extra == "napari"
+Provides-Extra: all
+Requires-Dist: pylibCZIrw>=4.0; extra == "all"
+Requires-Dist: readlif>=0.6.5; extra == "all"
+Requires-Dist: ome-types>=0.4; extra == "all"

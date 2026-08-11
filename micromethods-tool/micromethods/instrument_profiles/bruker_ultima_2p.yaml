@@ -1,0 +1,30 @@
+# Bruker Ultima 2P (multiphoton laser-scanning)
+#
+# PrairieView writes most acquisition settings to a companion XML, which the
+# tool reads automatically. What it does NOT record is the hardware identity:
+# fill that in here once.
+key: bruker_ultima_2p
+label: Bruker Ultima 2P (two-photon)
+
+match:
+  instrument_key: [bruker_ultima_2p]
+  fingerprint_contains: [prairie, bruker, ultima]
+
+values:
+  stand.manufacturer: Bruker
+  stand.model: Ultima 2P
+  stand.stand_type: upright
+  stand.modality: two-photon laser-scanning microscopy
+  software.name: PrairieView
+  software.developer: Bruker
+  # stand.modules: "galvo-galvo and resonant-galvo scan paths, non-descanned detection"
+  # objective.designation: "XLPLN25XWMP2 25x/1.05 W"             # TODO
+  # objective.immersion: water
+  # extras.multiphoton.laser: "Insight X3 (Spectra-Physics), tuned to 920 nm"  # TODO
+  # extras.multiphoton.detection: >-
+  #   non-descanned GaAsP PMTs, 565 nm dichroic, ET525/70 and ET595/50 filters
+
+channel_values:
+  # detector.kind: GaAsP PMT
+  # detector.manufacturer: Hamamatsu
+  # detector.model: H10770PA-40                                  # TODO

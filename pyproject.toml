@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "micromethods"
+version = "0.1.0"
+description = "Extract microscopy metadata and draft QUAREP-LiMi compliant methods sections"
+requires-python = ">=3.9"
+dependencies = [
+  "tifffile>=2023.7.10",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+zeiss = ["pylibCZIrw>=4.0"]
+leica = ["readlif>=0.6.5"]
+ome = ["ome-types>=0.4"]
+napari = ["napari>=0.4.18", "qtpy"]
+all = ["pylibCZIrw>=4.0", "readlif>=0.6.5", "ome-types>=0.4"]
+
+[project.scripts]
+micromethods = "micromethods.cli:main"
+
+[project.entry-points."napari.manifest"]
+micromethods = "micromethods._napari:napari.yaml"
+
+[tool.setuptools.packages.find]
+include = ["micromethods*"]
+
+[tool.setuptools.package-data]
+"micromethods._napari" = ["napari.yaml"]
+"micromethods.instrument_profiles" = ["*.yaml"]

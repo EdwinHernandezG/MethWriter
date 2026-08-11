@@ -1,0 +1,39 @@
+# Miltenyi Biotec UltraMicroscope Blaze (light-sheet)
+#
+# The Blaze OME-TIFF carries a rich Imspector annotation block, which the
+# reader now parses: objective, zoom, laser line, emission filter, exposure,
+# laser power, sheet NA/thickness/width, mosaic layout and the clearing liquid
+# all come straight from the file. What remains here is the hardware identity
+# that Imspector does not record.
+key: miltenyi_blaze
+label: Miltenyi Biotec UltraMicroscope Blaze (light-sheet)
+
+match:
+  instrument_key: [miltenyi_blaze]
+  fingerprint_contains: [blaze, ultramicroscope, imspector, miltenyi]
+
+values:
+  stand.manufacturer: Miltenyi Biotec
+  stand.model: UltraMicroscope Blaze
+  stand.stand_type: upright
+  stand.modality: light-sheet fluorescence microscopy
+  stand.modules: >-
+    bidirectional light-sheet illumination with dynamic horizontal focus and a
+    zoom-body detection arm
+  # software.name / .version come from the Imspector annotation.
+
+channel_values:
+  # Every Blaze detects on an sCMOS camera, but the model varies by
+  # configuration and Imspector records only the serial number. Fill in the
+  # model once, from the camera itself or the system documentation.
+  # detector.manufacturer: PCO
+  # detector.model: pco.edge 4.2                    # TODO: confirm on your system
+
+# Values here REPLACE what the file says. Use sparingly, and only where the
+# vendor field is known to be wrong.
+overrides: {}
+  # The 'Blaze ObjectiveNA' property does not always match the objective
+  # barrel (the PSF calibration block in the same file often disagrees). Once
+  # you have confirmed the real NA of the objective in use, set it here:
+  # objective.na: 0.35
+  # objective.designation: LVBT 4x (LaVision BioTec / Miltenyi), NA 0.35
