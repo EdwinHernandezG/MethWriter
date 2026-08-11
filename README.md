@@ -34,24 +34,36 @@ with `source = companion`.
 
 ## Install
 
-Full instructions, including the napari plugin and troubleshooting, are in
-[INSTALL.md](INSTALL.md).
+Two steps, always. The environment file installs the *dependencies*;
+micromethods itself is installed separately so that a packaging error shows a
+real message instead of being swallowed by `CondaEnvException: Pip failed`.
 
 ```bash
-# conda (recommended - brings napari and the Qt binding with it)
+cd <folder containing pyproject.toml and micromethods/>
+
+# 1. environment (brings napari and the Qt binding with it)
 conda env create -f environment.yml
 conda activate micromethods
 
-# or headless, for servers and batch pipelines
-conda env create -f environment-headless.yml
+# 2. the package itself - the conda step does NOT do this
+python -m pip install -e .
 
-# or into an environment you already have
-pip install -e ".[all]"          # everything
-pip install -e ".[zeiss,leica]"  # only what your unit needs
+# 3. confirm it worked
+micromethods doctor
 ```
 
-napari only discovers plugins installed in its own environment, so install
-micromethods and napari into the same one.
+For servers and batch pipelines, swap step 1 for
+`conda env create -f environment-headless.yml` (no napari, no Qt).
+Into an environment you already have, step 2 alone is enough:
+`pip install -e ".[all]"`, or `pip install -e ".[zeiss,leica]"` for just the
+readers your unit needs.
+
+napari only discovers plugins installed in its own environment, so steps 1 and
+2 must target the same one. `micromethods doctor` verifies exactly that; if the
+`micromethods` command itself is not found, run
+`python tools/diagnose_napari.py`, which needs no working install.
+
+Full instructions and troubleshooting: [INSTALL.md](INSTALL.md).
 
 ## Use
 
@@ -73,6 +85,9 @@ micromethods inspect /data/stack.czi --grep pinhole
 
 # is the installation (and the napari plugin) actually working?
 micromethods doctor
+
+# plugin missing and nothing else works? standalone, needs no working install
+python tools/diagnose_napari.py
 ```
 
 Exit code is `0` when every applicable required field is reported and `2`

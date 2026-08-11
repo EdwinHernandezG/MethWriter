@@ -193,9 +193,29 @@ conda activate micromethods
 micromethods doctor
 ```
 
+If `micromethods` is not even a recognised command, the installation did not
+take. Use the standalone diagnostic instead — it imports nothing from the
+package, so it works on a broken install:
+
+```bash
+python tools/diagnose_napari.py
+```
+
+It reports which of four causes applies: not installed here, installed with no
+code, napari in a different environment, or everything fine.
+
 It reports the interpreter, where the package was imported from, which readers
 are available, the Qt binding, and whether napari can load the plugin manifest
 — and exits non-zero with the fix when something is wrong.
+
+**The plugin is missing, and `micromethods doctor` says "NOT INSTALLED".**
+The environment file installs dependencies only. Run the second step:
+
+```bash
+conda activate micromethods
+cd <folder containing pyproject.toml>
+python -m pip install -e .
+```
 
 **The plugin is missing from the Plugins menu, with or without an error.**
 `pip install -e .` run from a directory that does not contain the
