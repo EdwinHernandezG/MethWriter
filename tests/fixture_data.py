@@ -371,3 +371,51 @@ def write_tiff(path: Path, xml: str, shape=(4, 64, 64)) -> Path:
     data = (np.random.default_rng(0).random(shape) * 1000).astype("uint16")
     tifffile.imwrite(str(path), data, description=xml, photometric="minisblack")
     return path
+
+
+# --- OME 2008-02, as written by Imspector Pro on the UltraMicroscope Blaze ----
+# Structure taken from a real 61 GB BigTIFF: the CA namespace instead of
+# StructuredAnnotations, <LogicalChannel> as a sibling of <Pixels>, ExWave /
+# EmWave instead of ExcitationWavelength / EmissionWavelength, and plane timing
+# in a child element.
+BLAZE_2008_OME = f"""<?xml version="1.0" encoding="UTF-8"?>
+<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2008-02"
+     xmlns:ca="http://www.openmicroscopy.org/Schemas/CA/2008-02"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<Image ID="Image:0" Name="10-13-53_spaomtest1_Blaze_C00.ome.tif"
+       DefaultPixels="Pixels:0">
+  <CreationDate>2024-10-29T10:13:53</CreationDate>
+  <Description>not_specified</Description>
+  <Pixels ID="Pixels:0" DimensionOrder="XYZCT" PixelType="Uint16"
+          BigEndian="false" SizeX="3886" SizeY="5701" SizeZ="1045"
+          SizeC="1" SizeT="1" PhysicalSizeX="2.708333" PhysicalSizeY="2.708333"
+          PhysicalSizeZ="5.0" TimeIncrement="0.0">
+    <TiffData/>
+    <Plane TheZ="0" TheC="0" TheT="0">
+      <PlaneTiming DeltaT="0.0" ExposureTime="0.0201"/>
+      <StagePosition PositionX="-17504.58" PositionY="23596.05"
+                     PositionZ="-1325.0"/>
+    </Plane>
+  </Pixels>
+  <LogicalChannel ID="LogicalChannel:0"
+                  Name="Ex: 640.000000nm Em: 680.000000nm"
+                  ExWave="640" EmWave="680" SamplesPerPixel="1">
+    <ChannelComponent Pixels="Pixels:0" Index="0" ColorDomain="none"/>
+  </LogicalChannel>
+</Image>
+<ca:CustomAttributes>
+  <SerialNumber SerialNumber="UM-3095"/>
+  <InstrumentMode InstrumentMode="Ultramicroscope Expert"/>
+  <MeasurementMode MeasurementMode="Mosaic Acquisition"/>
+  <ImspectorVersion ImspectorVersion="Imspector Pro 7.7.2"/>
+  <ObjectiveID ObjectiveID="not_specified"/>
+  <ObjectiveNA ObjectiveNA="not_specified"/>
+  {_escape_props(PROPS)}
+  <AlgorithmParameterSequence AlgorithmName="ImStitcher"
+    AlgorithmParameters="RefChannel=0 WritePyramids=true"
+    AlgorithmSource="Miltenyi Biotec B.V. &amp; Co. KG"
+    AlgorithmVersion="4.5.0.240920-g0d05408e4a"
+    SoftwareVersions="ImStitcher 4.5.0.240920-g0d05408e4a"/>
+</ca:CustomAttributes>
+</OME>
+"""

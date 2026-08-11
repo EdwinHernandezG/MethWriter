@@ -87,8 +87,15 @@ class OmeTiffReader(Reader):
         custom: dict = {}
         props: dict = {}
         processing: list = []
+        root = None
         if xml_text:
-            root = ET.fromstring(xml_text.encode("utf-8", "ignore"))
+            try:
+                root = ET.fromstring(xml_text.encode("utf-8", "ignore"))
+            except ET.ParseError as exc:
+                rec.notes.append(
+                    f"The OME-XML in this file is not well formed ({exc}); "
+                    "metadata could not be read from it.")
+        if root is not None:
             _parse_ome(root, rec, series)
             _pyramid_note(root, rec)
             custom, props, processing = _structured_annotations(root)
@@ -103,6 +110,16 @@ class OmeTiffReader(Reader):
                     "; ".join(f"{p['name']} {p.get('version') or ''}".strip()
                               for p in processing),
                     Source.FILE, "OME StructuredAnnotations/AlgorithmParameterSequence")
+
+        if not props:
+            extra_custom, extra_props, extra_processing = _annotations_from_pages(
+                path, tifffile, rec)
+            if extra_props or extra_custom:
+                custom = {**extra_custom, **custom}
+                props = {**extra_props, **props}
+                processing = processing or extra_processing
+                rec.vendor_raw["custom_attributes"] = custom
+                rec.vendor_raw["vendor_properties"] = props
 
         # Vendor extras from page descriptions and sidecar text files
         kv = {}
@@ -223,6 +240,15 @@ def _apply_vendor_hints(kv: dict[str, str], rec: Record) -> None:
 
 
 def _parse_ome(root, rec: Record, series: int) -> None:
+    namespace = root.tag[1:root.tag.index("}")] if root.tag.startswith("{") else ""
+    if namespace:
+        version = namespace.rstrip("/").rsplit("/", 1)[-1]
+        rec.vendor_raw["ome_schema"] = version
+        if version and not version.startswith("2016"):
+            rec.notes.append(
+                f"File uses the OME {version} schema rather than 2016-06; the "
+                "older element names were used to read it.")
+
     images = findall(root, "Image")
     if not images:
         return
@@ -310,7 +336,10 @@ def _parse_ome(root, rec: Record, series: int) -> None:
     planes = findall(pixels, "Plane")
     _from_planes(planes, rec)
 
-    for idx, chan in enumerate(findall(pixels, "Channel")):
+    # 2016 nests <Channel> inside <Pixels>; 2008 puts <LogicalChannel> directly
+    # under <Image>. Search from the image so both are found.
+    channel_nodes = findall(img, "Channel") or findall(img, "LogicalChannel")
+    for idx, chan in enumerate(channel_nodes):
         _channel(chan, rec, idx)
 
     # tiles: count distinct XY stage positions
@@ -333,7 +362,10 @@ def _structured_annotations(root) -> tuple[dict, dict, list]:
     props: dict[str, str] = {}
     processing: list[dict] = []
 
-    annotations = findall(root, "StructuredAnnotations")
+    # OME 2016-06 uses <StructuredAnnotations>; OME 2008-02 (still emitted by
+    # Imspector) uses <ca:CustomAttributes>. Same payload, different container.
+    annotations = (findall(root, "StructuredAnnotations")
+                   + findall(root, "CustomAttributes"))
     if not annotations:
         return custom, props, processing
 
@@ -351,8 +383,9 @@ def _structured_annotations(root) -> tuple[dict, dict, list]:
             })
         for elem in ann.iter():
             tag = strip_ns(elem.tag)
-            if tag in ("StructuredAnnotations", "XMLAnnotation", "Value", "prop",
-                       "Properties", "AlgorithmParameterSequence"):
+            if tag in ("StructuredAnnotations", "CustomAttributes", "XMLAnnotation",
+                       "Value", "prop", "Properties",
+                       "AlgorithmParameterSequence"):
                 continue
             own = attr_of(elem, tag)
             if own is not None:
@@ -360,6 +393,43 @@ def _structured_annotations(root) -> tuple[dict, dict, list]:
             elif elem.attrib:
                 for name, value in elem.attrib.items():
                     custom[f"{tag}/{strip_ns(name)}"] = str(value)
+    return custom, props, processing
+
+
+def _annotations_from_pages(path: Path, tifffile, rec: Record,
+                            limit: int = 12) -> tuple[dict, dict, list]:
+    """Look for a vendor annotation block on pages other than the first.
+
+    OME-TIFF nominally keeps the whole XML in the first IFD, but writers that
+    emit pyramids or split series do not always comply. Cheap to check, and it
+    turns a report with nothing in it into a complete one.
+    """
+    custom: dict = {}
+    props: dict = {}
+    processing: list = []
+    try:
+        with tifffile.TiffFile(str(path)) as tif:
+            for index, page in enumerate(tif.pages[:limit]):
+                tags = getattr(page, "tags", None)
+                tag = tags.get("ImageDescription") if tags is not None else None
+                text = getattr(tag, "value", None)
+                if not isinstance(text, str) or "<prop " not in text:
+                    continue
+                try:
+                    node = ET.fromstring(text.encode("utf-8", "ignore"))
+                except ET.ParseError:
+                    continue
+                page_custom, page_props, page_processing = _structured_annotations(node)
+                if page_props or page_custom:
+                    custom.update(page_custom)
+                    props.update(page_props)
+                    processing.extend(page_processing)
+                    rec.notes.append(
+                        f"Vendor annotations were read from TIFF page {index} "
+                        "rather than the first page.")
+                    break
+    except Exception as exc:  # never fatal - this is a best-effort fallback
+        rec.notes.append(f"Could not scan further pages for annotations: {exc}")
     return custom, props, processing
 
 
@@ -444,17 +514,19 @@ def _channel(chan, rec: Record, idx: int) -> None:
     c.fluorophore = fv(attr_of(chan, "Fluor"), Source.FILE, "Channel@Fluor")
     c.illumination_type = fv(attr_of(chan, "IlluminationType"), Source.FILE,
                              "Channel@IlluminationType")
-    c.acquisition_mode = fv(attr_of(chan, "AcquisitionMode"), Source.FILE,
+    c.acquisition_mode = fv(attr_of(chan, "AcquisitionMode", "Mode"), Source.FILE,
                             "Channel@AcquisitionMode")
-    ex = as_float(attr_of(chan, "ExcitationWavelength"))
-    em = as_float(attr_of(chan, "EmissionWavelength"))
+    # ExWave/EmWave are the 2008 spellings of ExcitationWavelength/EmissionWavelength.
+    ex = as_float(attr_of(chan, "ExcitationWavelength", "ExWave"))
+    em = as_float(attr_of(chan, "EmissionWavelength", "EmWave"))
     c.excitation_nm = fv(ex, Source.FILE, "Channel@ExcitationWavelength", "nm")
     c.emission_nm = fv(em, Source.FILE, "Channel@EmissionWavelength", "nm")
     pin = as_float(attr_of(chan, "PinholeSize"))
     c.pinhole_um = fv(to_um(pin, attr_of(chan, "PinholeSizeUnit") or "µm"), Source.FILE,
                       "Channel@PinholeSize", "µm")
 
-    settings = next(iter(findall(chan, "LightSourceSettings")), None)
+    settings = next(iter(findall(chan, "LightSourceSettings")
+                         + findall(chan, "LightSourceRef")), None)
     if settings is not None:
         wl = as_float(attr_of(settings, "Wavelength"))
         if wl and not c.excitation_nm:
@@ -468,7 +540,8 @@ def _channel(chan, rec: Record, idx: int) -> None:
             if ref and raw(ls.name) == ref:
                 c.light_source = ls
 
-    dset = next(iter(findall(chan, "DetectorSettings")), None)
+    dset = next(iter(findall(chan, "DetectorSettings")
+                     + findall(chan, "DetectorRef")), None)
     if dset is not None:
         ref = attr_of(dset, "ID")
         for det in rec.detectors:
@@ -493,13 +566,18 @@ def _from_planes(planes, rec: Record) -> None:
     deltas: list[float] = []
     for plane in planes[:20000]:
         ch = as_int(attr_of(plane, "TheC")) or 0
+        timing = next(iter(findall(plane, "PlaneTiming")), None)
         exp = as_float(attr_of(plane, "ExposureTime"))
+        if exp is None and timing is not None:
+            exp = as_float(attr_of(timing, "ExposureTime"))
         if exp is not None:
             unit = attr_of(plane, "ExposureTimeUnit") or "s"
             ms = to_seconds(exp, unit)
             if ms is not None:
                 per_channel.setdefault(ch, []).append(ms * 1000)
         dt = as_float(attr_of(plane, "DeltaT"))
+        if dt is None and timing is not None:
+            dt = as_float(attr_of(timing, "DeltaT"))
         if dt is not None and as_int(attr_of(plane, "TheZ")) in (0, None) \
                 and as_int(attr_of(plane, "TheC")) in (0, None):
             deltas.append(to_seconds(dt, attr_of(plane, "DeltaTUnit") or "s"))

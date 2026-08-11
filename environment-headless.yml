@@ -23,5 +23,6 @@ dependencies:
       - readlif>=0.6.5
       - pylibCZIrw>=4.0
 
-# Then, with the environment active and from the folder holding pyproject.toml:
+# IMPORTANT: this file installs DEPENDENCIES ONLY.
+# With the environment active, from the folder holding pyproject.toml, run:
 #     python -m pip install -e .

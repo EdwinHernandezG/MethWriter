@@ -16,11 +16,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import fixture_data  # noqa: E402  (tests dir is on sys.path via pytest)
+from tests import fixture_data  # noqa: E402
 
-# Formats that need an optional dependency are skipped rather than failed, so
-# a minimal install still gets a meaningful test run.
-tifffile = pytest.importorskip
+# Optional dependencies are skipped rather than failed, so a minimal install
+# still gets a meaningful test run.
 
 
 @pytest.fixture(scope="session")
@@ -53,3 +52,14 @@ def legacy_blaze_file(tmp_path_factory) -> Path:
                                    fixture_data.LEGACY_BLAZE_OME, shape=(8, 64, 64))
     (folder / "blaze_legacy_MetaData.txt").write_text(fixture_data.SIDECAR)
     return path
+
+
+@pytest.fixture(scope="session")
+def blaze_2008_file(tmp_path_factory) -> Path:
+    """A Blaze OME-TIFF written against the older OME 2008-02 schema."""
+    pytest.importorskip("tifffile")
+    pytest.importorskip("numpy")
+    folder = tmp_path_factory.mktemp("blaze2008")
+    return fixture_data.write_tiff(
+        folder / "10-13-53_spaomtest1_Blaze_C00.ome.tif",
+        fixture_data.BLAZE_2008_OME)

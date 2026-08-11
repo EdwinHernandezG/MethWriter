@@ -41,6 +41,7 @@ dependencies:
       # - aicspylibczi>=3.1  # alternative Zeiss reader
       # - czifile            # last-resort Zeiss reader, pure Python
 
+# IMPORTANT: this file installs DEPENDENCIES ONLY.
 # micromethods itself is deliberately NOT installed here. Installing it as a
 # pip line inside environment.yml hides any packaging error behind a generic
 # "CondaEnvException: Pip failed". Do it as a separate, visible step:

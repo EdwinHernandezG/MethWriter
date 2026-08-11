@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-import fixture_data
+from tests import fixture_data
 from micromethods import render
 from micromethods.gaps import find_gaps
 from micromethods.readers import czi, lif

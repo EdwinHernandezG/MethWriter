@@ -200,6 +200,12 @@ software. Expect to adjust attribute names for:
   STELLARIS and THUNDER; widefield systems use `ATLCameraSettingDefinition`.
 - Zeiss: `PinholeSizeAiry` is present on newer ZEN versions only; the fallback
   conversion from a physical diameter is flagged in the report.
+- OME schema version: Imspector writes **OME 2008-02**, not 2016-06. The
+  element names differ (`ca:CustomAttributes` rather than
+  `StructuredAnnotations`, `LogicalChannel` rather than `Channel`,
+  `ExWave`/`EmWave` rather than `ExcitationWavelength`/`EmissionWavelength`,
+  plane timing in a child element). Both vocabularies are read, and the report
+  records which schema the file used. `tools/inspect_ome.py` prints it.
 - Blaze: property names are stable within an Imspector generation but not
   across them; the mapping lives in one table in `readers/imspector.py`.
   Note that `Blaze ObjectiveNA` frequently disagrees with the PSF calibration
