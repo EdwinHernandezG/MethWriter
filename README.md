@@ -172,9 +172,11 @@ same report. Register it by installing with `[napari]`; the manifest is at
 
 ## Validating against your own data
 
-The OME-TIFF path is exercised by `tests/make_fixtures.py`; the CZI and LIF
-XML walks by `tests/test_parsers.py` (both run without the proprietary
-libraries). Vendor XML layouts drift between software versions, so before
+Run the suite with `pytest` (install with `pip install -e ".[test]"`). Sixty
+tests cover the OME-TIFF, Blaze and PrairieView paths plus the CZI and LIF XML
+walks; the vendor-XML tests need no proprietary libraries, since only the
+*retrieval* of that XML depends on them. Fixture metadata lives in
+`tests/fixture_data.py` and is a well-formed reconstruction of real files. Vendor XML layouts drift between software versions, so before
 trusting this on production data, run `micromethods inspect` on one real file
 per instrument and compare the extracted values against the acquisition
 software. Expect to adjust attribute names for:
