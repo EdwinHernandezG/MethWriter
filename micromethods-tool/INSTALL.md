@@ -103,8 +103,10 @@ attribute paths against your own files.
 ```bash
 micromethods --help
 micromethods profiles            # should list miltenyi_blaze and bruker_ultima_2p
-python tests/test_parsers.py     # Zeiss + Leica XML parsing, no vendor libs needed
-python tests/make_fixtures.py    # builds synthetic OME-TIFFs and reports on them
+micromethods doctor              # full installation self-check
+
+pip install -e ".[test]"
+pytest                           # 60 tests, no proprietary libraries needed
 ```
 
 ### Which readers are actually available

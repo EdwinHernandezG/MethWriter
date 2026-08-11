@@ -61,7 +61,10 @@ def _read_czi_xml(path: Path) -> str:
 
 
 def _parse(root, rec: Record) -> None:
-    md = find(root, "Metadata") or root
+    # An Element with no children is falsey, so test against None explicitly.
+    md = find(root, "Metadata")
+    if md is None:
+        md = root
     info = find(md, "Information")
     image = find(info, "Image") if info is not None else None
     instrument = find(info, "Instrument") if info is not None else None

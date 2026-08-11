@@ -163,14 +163,29 @@ def best_match(record: Record, extra: list[Path] | None = None) -> Profile | Non
 
 
 def apply_best(record: Record, extra: list[Path] | None = None) -> Profile | None:
-    profile = best_match(record, extra)
-    if profile is not None:
+    """Apply every matching profile, least specific first, and return the last.
+
+    Profiles layer rather than compete: the shipped profile supplies what is
+    true of every instrument of that model, the facility's own profile adds the
+    local configuration, and a profile named on the command line goes on top.
+    A one-line override file therefore does not have to restate everything the
+    shipped profile already knows.
+    """
+    scored = [(p.score(record), p) for p in discover(extra)]
+    matches = [(s, p) for s, p in scored if s > 0]
+    if not matches:
+        return None
+    # Ascending priority: package (0) < user directory (1) < explicit (2),
+    # and within a rank, the better-matching profile last.
+    matches.sort(key=lambda sp: (sp[1].rank, sp[0]))
+    for _, profile in matches:
         applied = profile.apply(record)
-        record.notes.append(
-            f"Applied instrument profile '{profile.key}' "
-            f"({len(applied)} field(s) filled from {profile.source_path})"
-        )
-    return profile
+        if applied:
+            record.notes.append(
+                f"Applied instrument profile '{profile.key}' "
+                f"({len(applied)} field(s) from {profile.source_path})"
+            )
+    return matches[-1][1]
 
 
 def write_profile(key: str, values: dict[str, Any], label: str = "",
