@@ -1,5 +1,0 @@
-[console_scripts]
-micromethods = micromethods.cli:main
-
-[napari.manifest]
-micromethods = micromethods._napari:napari.yaml

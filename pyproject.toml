@@ -25,8 +25,16 @@ micromethods = "micromethods.cli:main"
 [project.entry-points."napari.manifest"]
 micromethods = "micromethods._napari:napari.yaml"
 
-[tool.setuptools.packages.find]
-include = ["micromethods*"]
+# Explicit, not auto-discovery: if pip is run from the wrong directory, an
+# explicit list fails loudly at build time instead of installing an empty
+# distribution whose entry points resolve but whose modules do not exist.
+[tool.setuptools]
+packages = [
+  "micromethods",
+  "micromethods.readers",
+  "micromethods._napari",
+  "micromethods.instrument_profiles",
+]
 
 [tool.setuptools.package-data]
 "micromethods._napari" = ["napari.yaml"]

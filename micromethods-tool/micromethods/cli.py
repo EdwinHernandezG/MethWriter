@@ -95,6 +95,119 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Check that the installation is actually usable, especially by napari.
+
+    The failure this exists for: `pip install -e .` run from a directory that
+    does not contain the package installs distribution metadata only. pip
+    reports success and the napari entry point registers, but the module does
+    not exist, so napari fails to import the manifest and the plugin never
+    appears in the Plugins menu.
+    """
+    import importlib
+    import importlib.metadata as md
+    import sys
+
+    problems: list[str] = []
+    print(f"python              {sys.version.split()[0]}  ({sys.executable})")
+
+    try:
+        import micromethods
+        print(f"micromethods        {micromethods.__version__}  "
+              f"({Path(micromethods.__file__).parent})")
+    except ImportError as exc:
+        print(f"micromethods        NOT IMPORTABLE  ({exc})")
+        problems.append(
+            "The package is not importable. Reinstall from the directory that "
+            "contains both pyproject.toml and the micromethods/ folder:\n"
+            "    pip uninstall -y micromethods\n"
+            "    cd <that directory>\n"
+            "    python -m pip install -e .")
+        micromethods = None
+
+    try:
+        dist = md.distribution("micromethods")
+        location = dist.locate_file("")
+        print(f"distribution        {dist.version}  ({location})")
+    except md.PackageNotFoundError:
+        print("distribution        NOT INSTALLED")
+        problems.append("No 'micromethods' distribution found in this environment.")
+
+    print("\nreaders")
+    for module, label in (("tifffile", "OME-TIFF / Blaze"), ("readlif", "Leica .lif"),
+                          ("pylibCZIrw", "Zeiss .czi"),
+                          ("aicspylibczi", "Zeiss .czi (alternative)"),
+                          ("czifile", "Zeiss .czi (fallback)"),
+                          ("ome_types", "OME-XML validation")):
+        try:
+            importlib.import_module(module)
+            print(f"  available         {label:<28} ({module})")
+        except ImportError:
+            print(f"  missing           {label:<28} ({module})")
+    try:
+        importlib.import_module("tifffile")
+    except ImportError:
+        problems.append("tifffile is required for every format; install it.")
+
+    print("\nnapari plugin")
+    try:
+        import napari
+        print(f"  napari            {napari.__version__}")
+    except ImportError:
+        print("  napari            not installed (the CLI still works)")
+        napari = None
+    binding = None
+    for module in ("PySide6", "PyQt6", "PyQt5", "PySide2"):
+        try:
+            importlib.import_module(module)
+            binding = module
+            break
+        except ImportError:
+            continue
+    print(f"  qt binding        {binding or 'none found'}")
+    if napari is not None and binding is None:
+        problems.append("napari is installed but no Qt binding is; "
+                        "conda install -c conda-forge pyside6")
+
+    registered = [e for e in md.entry_points(group="napari.manifest")
+                  if e.name == "micromethods"]
+    print(f"  entry point       {'registered' if registered else 'NOT REGISTERED'}")
+    if not registered:
+        problems.append("The napari.manifest entry point is missing; reinstall "
+                        "the package so its metadata is rebuilt.")
+    else:
+        try:
+            from npe2 import PluginManifest
+            manifest = PluginManifest.from_distribution("micromethods")
+            widgets = [w.display_name for w in manifest.contributions.widgets]
+            print(f"  manifest          OK ({', '.join(widgets)})")
+        except ImportError:
+            print("  manifest          npe2 not installed, cannot verify")
+        except Exception as exc:
+            print(f"  manifest          FAILED TO LOAD ({type(exc).__name__}: {exc})")
+            problems.append(
+                "napari can see the entry point but cannot load the manifest. "
+                "This is what makes the plugin silently absent from the Plugins "
+                "menu. Usually the package itself is not importable - see above.")
+
+    if micromethods is not None:
+        from . import profiles as store
+        found = store.discover()
+        print(f"\ninstrument profiles {len(found)} found")
+        for profile in found:
+            print(f"  {profile.key:<22} {profile.source_path}")
+
+    if problems:
+        print("\nPROBLEMS")
+        for i, problem in enumerate(problems, 1):
+            print(f"  {i}. {problem}")
+        return 1
+    print("\nEverything checks out."
+          + ("" if napari is None else " Restart napari and look under "
+             "Plugins > Methods reporter."))
+    return 0
+
+
 def cmd_profiles(args: argparse.Namespace) -> int:
     found = profile_store.discover()
     if not found:
@@ -139,6 +252,11 @@ def main(argv: list[str] | None = None) -> int:
 
     pro = sub.add_parser("profiles", help="list known instrument profiles")
     pro.set_defaults(func=cmd_profiles)
+
+    doc = sub.add_parser("doctor",
+                         help="check the installation, including napari plugin "
+                              "registration")
+    doc.set_defaults(func=cmd_doctor)
 
     args = parser.parse_args(argv)
     try:

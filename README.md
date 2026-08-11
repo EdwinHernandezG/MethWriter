@@ -15,8 +15,17 @@ interface is only a `Prompter` implementation.
 |---|---|---|
 | Zeiss `.czi` | `readers.czi` | `pylibCZIrw` (or `aicspylibczi`, or `czifile`) |
 | Leica `.lif`, `.lof`, `.xlef` | `readers.lif` | `readlif>=0.6.5` |
-| OME-TIFF (incl. Miltenyi Blaze) | `readers.ometiff` | `tifffile` |
+| OME-TIFF (generic) | `readers.ometiff` | `tifffile` |
+| Miltenyi Blaze (Imspector) | `readers.imspector` | `tifffile` |
 | Bruker Ultima 2P (PrairieView) | `readers.prairieview` | none — companion XML |
+
+Both vendor enrichments run automatically. The Blaze writes a nearly empty OME
+`<Image>` block and puts the real metadata in `<StructuredAnnotations>` — a
+`CustomAttributes` block plus several hundred `<prop fname=".."/>` entries.
+That is where the objective, zoom body, laser line, emission filter, exposure,
+laser power, clearing liquid, mosaic layout and light-sheet geometry live, and
+it is parsed into the same Record as everything else. Sub-resolution pyramid
+levels are recognised as such rather than treated as separate datasets.
 
 The PrairieView reader runs automatically as an *enrichment* pass: PrairieView
 keeps dwell time, zoom, objective, laser and PMT settings in a sibling
@@ -61,6 +70,9 @@ micromethods report /data/stack.czi --save-profile lsm980_roomB12
 
 # what does this vendor actually store?
 micromethods inspect /data/stack.czi --grep pinhole
+
+# is the installation (and the napari plugin) actually working?
+micromethods doctor
 ```
 
 Exit code is `0` when every applicable required field is reported and `2`
@@ -101,6 +113,11 @@ channel_values:
   detector.manufacturer: Carl Zeiss Microscopy
 ```
 
+An `overrides:` block replaces values the file itself supplies — the escape
+hatch for vendor fields known to be wrong. Every override is recorded in the
+report ("file said 0.1, profile says 0.35"), so a corrected value is never
+silently substituted.
+
 Profiles live in `micromethods/instrument_profiles/` (shipped) and
 `~/.micromethods/profiles/` (yours, or `$MICROMETHODS_PROFILES`). A profile
 **never** overwrites a value read from the file — precedence is
@@ -126,6 +143,26 @@ Every value is a `Value(value, source, detail, unit)`. Nothing enters the
 methods text without a recorded origin, and derived quantities (z range, total
 acquisition time, pinhole in Airy units) say so.
 
+### Repository layout
+
+`pyproject.toml` and the `micromethods/` package directory must sit at the same
+level, and that is the directory to install from. Installing from anywhere else
+produces a distribution with no code in it — pip still reports success, but
+nothing is importable and the napari plugin will not appear. `micromethods
+doctor` detects exactly this.
+
+```
+MethWriter/
+├── pyproject.toml
+├── environment.yml
+├── micromethods/          <- the package
+│   ├── __init__.py
+│   ├── readers/
+│   ├── _napari/napari.yaml
+│   └── instrument_profiles/
+└── tests/
+```
+
 ### napari
 
 `micromethods/_napari/` provides a dock widget that reads the file, builds a
@@ -146,9 +183,11 @@ software. Expect to adjust attribute names for:
   STELLARIS and THUNDER; widefield systems use `ATLCameraSettingDefinition`.
 - Zeiss: `PinholeSizeAiry` is present on newer ZEN versions only; the fallback
   conversion from a physical diameter is flagged in the report.
-- Blaze: light-sheet width/NA/laser power live in the Imspector sidecar, whose
-  key names vary by software version — extend `_VENDOR_HINTS` in
-  `readers/ometiff.py`.
+- Blaze: property names are stable within an Imspector generation but not
+  across them; the mapping lives in one table in `readers/imspector.py`.
+  Note that `Blaze ObjectiveNA` frequently disagrees with the PSF calibration
+  block in the same file — the tool reports the discrepancy rather than
+  picking one, and a profile `overrides:` entry settles it permanently.
 
 ## Reference
 

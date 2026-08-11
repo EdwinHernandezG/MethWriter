@@ -184,6 +184,30 @@ The reader tries pylibCZIrw, then aicspylibczi, then czifile, and only raises
 if none is importable. If none installs, convert to OME-TIFF with Bio-Formats'
 `bfconvert` and use the generic reader.
 
+**Fastest check for any of the below**
+
+```bash
+conda activate micromethods
+micromethods doctor
+```
+
+It reports the interpreter, where the package was imported from, which readers
+are available, the Qt binding, and whether napari can load the plugin manifest
+— and exits non-zero with the fix when something is wrong.
+
+**The plugin is missing from the Plugins menu, with or without an error.**
+`pip install -e .` run from a directory that does not contain the
+`micromethods/` folder installs distribution metadata *only*. pip prints
+"Successfully installed", the napari entry point registers, and then napari
+fails to import the manifest — so the plugin never appears. Check the layout:
+
+```bash
+cd <your project folder>
+ls          # must show pyproject.toml AND micromethods/ side by side
+```
+
+If the package lives one level down, `cd` there before installing. See also:
+
 **napari logs `'micromethods' could not be imported: No module named 'micromethods'`.**
 The distribution metadata is installed (napari found the entry point) but the
 package itself is not — `pip install -e .` was run from a directory that does

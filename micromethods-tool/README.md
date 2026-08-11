@@ -70,6 +70,9 @@ micromethods report /data/stack.czi --save-profile lsm980_roomB12
 
 # what does this vendor actually store?
 micromethods inspect /data/stack.czi --grep pinhole
+
+# is the installation (and the napari plugin) actually working?
+micromethods doctor
 ```
 
 Exit code is `0` when every applicable required field is reported and `2`
@@ -139,6 +142,26 @@ render.py      Record -> methods text, checklist table, JSON
 Every value is a `Value(value, source, detail, unit)`. Nothing enters the
 methods text without a recorded origin, and derived quantities (z range, total
 acquisition time, pinhole in Airy units) say so.
+
+### Repository layout
+
+`pyproject.toml` and the `micromethods/` package directory must sit at the same
+level, and that is the directory to install from. Installing from anywhere else
+produces a distribution with no code in it — pip still reports success, but
+nothing is importable and the napari plugin will not appear. `micromethods
+doctor` detects exactly this.
+
+```
+MethWriter/
+├── pyproject.toml
+├── environment.yml
+├── micromethods/          <- the package
+│   ├── __init__.py
+│   ├── readers/
+│   ├── _napari/napari.yaml
+│   └── instrument_profiles/
+└── tests/
+```
 
 ### napari
 
