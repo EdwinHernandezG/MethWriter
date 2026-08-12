@@ -29,6 +29,11 @@ jobs:
       - name: Repository layout
         run: python tools/flatten_repo.py --check
 
+      - name: No workflow may test an uninstalled package
+        # A second workflow that runs pytest without installing the project
+        # produces a confusing failure in a job this file does not control.
+        run: python tools/check_workflows.py --check
+
       - name: Install
         run: |
           python -m pip install --upgrade pip

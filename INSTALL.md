@@ -316,6 +316,28 @@ python -m pip install -U pip setuptools wheel   # editable installs need setupto
   somewhere outside OneDrive;
 - a `pyproject.toml` edited to list packages that do not exist in the checkout.
 
+**CI fails with "imports from the source tree but is not installed", but the
+tests pass locally.**
+A workflow is running `pytest` without installing the project first. Tests
+still import it from the checked-out source, so the run looks plausible until
+the guard catches it. Audit the workflows:
+
+```bash
+python tools/check_workflows.py
+```
+
+The usual cause is a second workflow file alongside `ci.yml` — GitHub's
+suggested Python starter installs from `requirements.txt`, which this project
+does not have, so it installs nothing. Delete the stray file, or add before
+its pytest step:
+
+```yaml
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
+```
+
 **`No reader for '<file>'`.**
 The extension is not one of `.czi`, `.lif`, `.lof`, `.xlef`, `.tif`, `.tiff`,
 `.ome.tif`, `.ome.tiff`, `.ome.btf`. Convert with `bfconvert -no-upgrade in.nd2

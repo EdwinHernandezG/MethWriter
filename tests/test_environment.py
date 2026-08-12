@@ -94,3 +94,20 @@ def test_installation_guard_reports_something_useful(pytestconfig):
     summary = _environment_summary(pytestconfig)
     for field in ("python", "prefix", "rootdir", "imported"):
         assert field in summary
+
+
+def test_every_workflow_installs_the_project():
+    """A workflow that runs pytest without installing the project tests the
+    source tree instead of an installation, and fails confusingly in a job
+    this repository's own CI file does not control."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    script = root / "tools" / "check_workflows.py"
+    if not script.exists() or not (root / ".github" / "workflows").is_dir():
+        pytest.skip("not running from a checkout with workflows")
+    result = subprocess.run([sys.executable, str(script), "--check"],
+                            cwd=root, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
