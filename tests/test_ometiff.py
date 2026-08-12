@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.conftest import needs_imaging
+
 from micromethods import readers, render
 from micromethods.gaps import find_gaps
 from micromethods.schema import Record, Source, raw
@@ -94,3 +96,7 @@ def test_report_and_json_are_produced(confocal, confocal_file):
     assert payload["format"] == "OME-TIFF"
     na = payload["record"]["objective"]["na"]
     assert na["value"] == 1.4 and na["source"] == "file"
+
+
+# Everything in this module builds or reads a real TIFF.
+pytestmark = needs_imaging

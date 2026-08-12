@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.conftest import needs_imaging
+
 from micromethods import profiles as profile_store
 from micromethods import readers, render
 from micromethods.gaps import find_gaps
@@ -444,3 +446,7 @@ def test_single_channel_keeps_detail_inline(blaze):
     assert "Both channels" not in text
     assert "sCMOS camera" in text
     assert "20.1 ms exposure" in text
+
+
+# Everything in this module builds or reads a real TIFF.
+pytestmark = needs_imaging

@@ -34,6 +34,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[test]"
 
+      - name: Dependencies must actually be installed
+        # A broken install shows up as a suite that skips most of itself and
+        # still reports success. Fail here instead, where the cause is obvious.
+        run: |
+          python -c "import numpy, tifffile, yaml; print('numpy', numpy.__version__); print('tifffile', tifffile.__version__)"
+          python -m pip check
+
       - name: Package must be importable, not just installed
         run: |
           python -c "import micromethods, pathlib; print(pathlib.Path(micromethods.__file__).parent)"
@@ -52,4 +59,7 @@ jobs:
         run: micromethods doctor
 
       - name: Tests
-        run: pytest
+        # CI is set by GitHub Actions, which puts conftest.py into strict mode:
+        # missing dependencies and source-tree-only installs become errors
+        # rather than silent skips.
+        run: pytest -ra
