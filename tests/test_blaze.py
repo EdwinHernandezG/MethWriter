@@ -285,9 +285,10 @@ def test_channel_order_is_flagged_as_inferred(twocolour):
 
 def test_imaging_medium_uses_the_vendors_own_name(twocolour):
     """The user selected 'MACS IS' in Imspector and that is what their protocol
-    says, so it is what the methods text should say."""
+    says, so it is what the methods text should say - once."""
     text = render.methods_text(twocolour)
-    assert "MACS IS as the imaging medium" in text
+    assert "dipping objective (LVBT 4x) in MACS IS" in text
+    assert text.count("MACS IS") == 1
     assert "MACS Imaging Solution (Miltenyi Biotec)" not in text
     # The expansion is still available for the checklist's name-and-manufacturer
     # requirement.
@@ -305,7 +306,6 @@ def test_dipping_system_has_no_cover_glass_or_mountant(twocolour):
     open or answered wrongly."""
     text = render.methods_text(twocolour)
     assert "cover glass" not in text
-    assert "Samples were scanned submerged in MACS IS as the imaging medium" in text
     assert raw(twocolour.specimen.mounting_medium) == "MACS IS"
     assert "not applicable" in str(raw(twocolour.specimen.coverglass_no, ""))
 
@@ -389,3 +389,58 @@ def test_detector_model_is_no_longer_a_gap(twocolour):
     missing = {q.path for q in find_gaps(twocolour).blocking}
     assert "channels[0].detector.model" not in missing
     assert "channels[1].detector.model" not in missing
+
+
+# --- redundancy in the generated prose --------------------------------------
+
+def test_camera_and_exposure_are_stated_once_not_per_channel(twocolour):
+    """One camera, one exposure: say so once. Repeating it on every channel is
+    noise a reader has to filter out."""
+    text = render.methods_text(twocolour)
+    assert text.count("pco.edge 4.2 M CLHS") == 1
+    assert text.count("150 ms exposure") == 1
+    assert "Both channels were recorded on a pco.edge 4.2 M CLHS sCMOS camera " \
+           "(PCO) with 150 ms exposure." in text
+
+
+def test_per_channel_settings_still_appear(twocolour):
+    """Hoisting the shared parts must not lose what differs between channels."""
+    text = render.methods_text(twocolour)
+    assert "excited at 488 nm and detected between 500 and 550 nm with 20% laser power" in text
+    assert "excited at 561 nm and detected between 590 and 650 nm with 10% laser power" in text
+
+
+def test_differing_exposures_stay_on_their_channels(twocolour):
+    """The moment a setting varies, it belongs back on the individual channels."""
+    import copy
+
+    from micromethods.schema import Source as S
+    from micromethods.schema import Value
+
+    rec = copy.deepcopy(twocolour)
+    rec.channels[1].exposure_time_ms = Value(300.0, S.FILE, "test", "ms")
+    text = render.methods_text(rec)
+    assert "150 ms exposure" in text and "300 ms exposure" in text
+    assert "Both channels were recorded" in text          # camera is still shared
+    assert "with 150 ms exposure." not in text.split("Both channels")[1]
+
+
+def test_differing_detectors_stay_on_their_channels(twocolour):
+    import copy
+
+    from micromethods.schema import Source as S
+    from micromethods.schema import Value
+
+    rec = copy.deepcopy(twocolour)
+    rec.channels[1].detector = copy.deepcopy(rec.channels[1].detector)
+    rec.channels[1].detector.model = Value("ORCA-Fusion", S.FILE, "test")
+    text = render.methods_text(rec)
+    assert "pco.edge 4.2 M CLHS" in text and "ORCA-Fusion" in text
+
+
+def test_single_channel_keeps_detail_inline(blaze):
+    """With one channel there is nothing to hoist, so the sentence stays whole."""
+    text = render.methods_text(blaze)
+    assert "Both channels" not in text
+    assert "sCMOS camera" in text
+    assert "20.1 ms exposure" in text

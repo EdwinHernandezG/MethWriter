@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from .checklist import CATEGORY_ORDER, REQUIREMENTS, Level
 from .gaps import Report
-from .schema import Record, Source, Value, path_get, raw, to_dict
+from .schema import Channel, Record, Source, Value, path_get, raw, to_dict
 from .units import fmt, fmt_duration
 
 MISSING = "[MISSING: {}]"
@@ -121,10 +121,13 @@ def specimen_paragraph(rec: Record) -> str:
             f"coated with {coating}" if coating and coating != "not applicable" else "",
         ], sep=", "))
     medium = _v(s.mounting_medium)
-    if medium and dipping:
+    # On a dipping system the medium is named in the objective sentence
+    # ("...objective in MACS IS"), so repeating it here says nothing new.
+    already_stated = dipping and medium and medium == _v(rec.objective.immersion_medium)
+    if medium and dipping and not already_stated:
         sentences.append(_sentence([
             f"samples were scanned submerged in {medium} as the imaging medium"]))
-    elif medium:
+    elif medium and not dipping:
         man = _v(s.mounting_medium_manufacturer)
         sentences.append(_sentence(
             [f"prior to imaging, samples were mounted in {medium}",
@@ -220,8 +223,39 @@ def illumination_sentences(rec: Record) -> list[str]:
     return out
 
 
+def _count_word(n: int) -> str:
+    return {2: "Both", 3: "All three", 4: "All four"}.get(n, f"All {n}")
+
+
+def _detector_phrase(c: Channel) -> str:
+    kind, model = _v(c.detector.kind), _v(c.detector.model)
+    return f"{model} {kind}" if model and kind else _join([kind, model], " ")
+
+
+def _shared(rec: Record, getter) -> str | None:
+    """Return the common value of a per-channel attribute, or None if it varies.
+
+    A microscope with one camera and one exposure setting should say so once,
+    not once per channel; but the moment either differs, the detail belongs
+    back on the individual channels.
+    """
+    if len(rec.channels) < 2:
+        return None
+    values = {getter(c) for c in rec.channels}
+    if len(values) != 1:
+        return None
+    only = values.pop()
+    return only or None
+
+
 def channel_sentences(rec: Record) -> list[str]:
     out = []
+    # Detector and exposure are usually identical across channels on a
+    # camera-based system; state them once afterwards instead of repeating.
+    shared_detector = _shared(rec, _detector_phrase)
+    shared_maker = _shared(rec, lambda c: _v(c.detector.manufacturer))
+    shared_exposure = _shared(rec, lambda c: _v(c.exposure_time_ms))
+
     for idx, c in enumerate(rec.channels):
         label = _channel_label(rec, idx)
         excitation = _v(c.excitation_nm, "nm")
@@ -229,9 +263,8 @@ def channel_sentences(rec: Record) -> list[str]:
         filter_set = _v(c.filter_set)
         # Avoid "sCMOS camera pco.edge 4.2": if the model is known, the generic
         # kind only adds value when it says something the model does not.
-        kind, model = _v(c.detector.kind), _v(c.detector.model)
-        detector = f"{model} {kind}" if model and kind else _join([kind, model], " ")
-        detector_man = _v(c.detector.manufacturer)
+        detector = "" if shared_detector else _detector_phrase(c)
+        detector_man = "" if shared_detector else _v(c.detector.manufacturer)
         emission_bits = ""
         window = c.detection_range_nm.value if c.detection_range_nm else None
         if isinstance(window, (list, tuple)) and len(window) == 2:
@@ -251,12 +284,12 @@ def channel_sentences(rec: Record) -> list[str]:
         if detector:
             parts.append(f"on {_article(detector)} {detector}"
                          + (f" ({detector_man})" if detector_man else ""))
-        else:
+        elif not shared_detector:
             parts.append(f"on {MISSING.format('detector type and model')}")
         settings = []
         if raw(c.pinhole_au):
             settings.append(f"a {_v(c.pinhole_au)} AU pinhole")
-        if raw(c.exposure_time_ms):
+        if raw(c.exposure_time_ms) and not shared_exposure:
             settings.append(f"{_v(c.exposure_time_ms)} ms exposure")
         if raw(c.laser_power):
             settings.append(f"{_vu(c.laser_power)} laser power")
@@ -265,6 +298,16 @@ def channel_sentences(rec: Record) -> list[str]:
         if settings:
             parts.append("with " + _join(settings, ", "))
         out.append(_sentence(parts))
+
+    if shared_detector or shared_exposure:
+        subject = f"{_count_word(len(rec.channels))} channels were recorded"
+        tail = []
+        if shared_detector:
+            tail.append(f"on {_article(shared_detector)} {shared_detector}"
+                        + (f" ({shared_maker})" if shared_maker else ""))
+        if shared_exposure:
+            tail.append(f"with {shared_exposure} ms exposure")
+        out.append(_sentence([subject, _join(tail, " ")]))
     return out
 
 

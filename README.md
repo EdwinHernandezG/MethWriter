@@ -158,6 +158,12 @@ prompt.py      [Question] -> answers     (CLI / napari / answer file / nothing)
 render.py      Record -> methods text, checklist table, JSON
 ```
 
+The prose layer avoids restating what the reader already knows: settings that
+are identical across every channel (camera, exposure) are stated once rather
+than repeated per channel, and revert to per-channel mentions as soon as one
+of them differs. The imaging medium is named where it is most informative -
+alongside the objective on a dipping system - and not again.
+
 Every value is a `Value(value, source, detail, unit)`. Nothing enters the
 methods text without a recorded origin, and derived quantities (z range, total
 acquisition time, pinhole in Airy units) say so.
