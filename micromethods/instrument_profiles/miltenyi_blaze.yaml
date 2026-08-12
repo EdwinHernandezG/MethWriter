@@ -1,10 +1,10 @@
 # Miltenyi Biotec UltraMicroscope Blaze (light-sheet)
 #
 # The Blaze OME-TIFF carries a rich Imspector annotation block, which the
-# reader now parses: objective, zoom, laser line, emission filter, exposure,
-# laser power, sheet NA/thickness/width, mosaic layout and the clearing liquid
-# all come straight from the file. What remains here is the hardware identity
-# that Imspector does not record.
+# reader parses: objective, zoom, laser lines, emission filters, exposure,
+# laser power, sheet geometry, mosaic layout and the clearing liquid all come
+# straight from the file. What remains here is the hardware identity and the
+# facility details that Imspector does not record.
 key: miltenyi_blaze
 label: Miltenyi Biotec UltraMicroscope Blaze (light-sheet)
 
@@ -20,20 +20,39 @@ values:
   stand.modules: >-
     bidirectional light-sheet illumination with dynamic horizontal focus and a
     zoom-body detection arm
-  # software.name / .version come from the Imspector annotation.
+
+  # Blaze (LVBT) objectives are not sold in the usual correction classes -
+  # there is no "Plan Apochromat" equivalent printed on the barrel. Chromatic
+  # correction is performed dynamically, by moving the detection turret and
+  # tube lens per wavelength (see the 'Blaze FocusOffsets' and
+  # 'Blaze ChromCorrWithTurret' properties in the file). Reporting that is
+  # more accurate than leaving the checklist field empty.
+  objective.correction: dynamic chromatic correction
+
+  # Facility details for the acknowledgement. Edit for your own site.
+  extras.facility.name: Ci2A MASTER Core Facility
+  # extras.facility.grant: "[grant number]"
 
 channel_values:
-  # Every Blaze detects on an sCMOS camera, but the model varies by
-  # configuration and Imspector records only the serial number. Fill in the
-  # model once, from the camera itself or the system documentation.
-  # detector.manufacturer: PCO
-  # detector.model: pco.edge 4.2                    # TODO: confirm on your system
+  # The camera model, manufacturer and serial number are read from the file
+  # itself (the 'Camera Info' property names them), so nothing is needed here.
+  # Override only if your system reports them wrongly.
+
+# Sensor specifications, for the reader who wants to judge sampling. These are
+# fixed properties of the detector, not of any one acquisition, and the
+# 4.2 Megapixel sCMOS in the Blaze detection arm is a 2048 x 2048 sensor on a
+# 6.5 um pitch (the pixel size the report derives from Camera FullXLen agrees).
+# Uncomment if you want them to appear in the report.
+# values_extra:
+#   extras.detection.sensor: >-
+#     4.2 megapixel sCMOS, 2048 x 2048 pixels, 6.5 um pitch (13.3 x 13.3 mm,
+#     18.8 mm diagonal), 0.8 e- median read noise, 82% peak quantum efficiency,
+#     100 fps maximum frame rate
 
 # Values here REPLACE what the file says. Use sparingly, and only where the
 # vendor field is known to be wrong.
 overrides: {}
-  # The 'Blaze ObjectiveNA' property does not always match the objective
-  # barrel (the PSF calibration block in the same file often disagrees). Once
-  # you have confirmed the real NA of the objective in use, set it here:
+  # Older Imspector versions write an objective NA that disagrees with the PSF
+  # calibration block in the same file. If your system reports 0.1 for the
+  # LVBT 4x, uncomment this after confirming against the documentation:
   # objective.na: 0.35
-  # objective.designation: LVBT 4x (LaVision BioTec / Miltenyi), NA 0.35

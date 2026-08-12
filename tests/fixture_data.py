@@ -419,3 +419,175 @@ BLAZE_2008_OME = f"""<?xml version="1.0" encoding="UTF-8"?>
 </ca:CustomAttributes>
 </OME>
 """
+
+
+# --- A real two-colour Blaze mosaic (Imspector Pro 8.0.3, OME 2016-06) -------
+# Properties copied verbatim from an acquisition on UM-3140. Two points of
+# interest: the <Channel> elements are bare (no wavelengths at all, despite
+# SizeC=2), and 'UserRequestedOverlapInPercent' holds uninitialised memory
+# while the per-axis properties carry the real 10%.
+BLAZE_TWOCOLOUR_PROPS = [
+    ('Blaze AttenuatorPower0', '21'),
+    ('Blaze AttenuatorPower1', '55'),
+    ('Blaze AttenuatorPower2', '10'),
+    ('Blaze AttenuatorPower3', '20'),
+    ('Blaze AttenuatorPower4', '13'),
+    ('Blaze AttenuatorPower5', '1'),
+    ('Blaze AttenuatorPower6', '9'),
+    ('Blaze AttenuatorPower7', '43'),
+    ('Blaze AttenuatorPower8', '43'),
+    ('Blaze AttenuatorPower9', '43'),
+    ('Blaze ChanEmFilter0', '4'),
+    ('Blaze ChanEmFilter1', '3'),
+    ('Blaze ChanEmFilter2', '2'),
+    ('Blaze ChanEmFilter3', '1'),
+    ('Blaze ChanEmFilter4', '0'),
+    ('Blaze ChanEmFilter5', '5'),
+    ('Blaze ChanEmFilter6', '6'),
+    ('Blaze ChanEmFilter7', '2'),
+    ('Blaze ChanEmFilter8', '2'),
+    ('Blaze ChanEmFilter9', '2'),
+    ('Blaze ChromCorrWithTurret', '1'),
+    ('Blaze ContinuousStackMode', '0'),
+    ('Blaze CurPower', '20'),
+    ('Blaze CurWLEmission', '595'),
+    ('Blaze CurWLExcitation', '561'),
+    ('Blaze CurrentZoom', '1.000000'),
+    ('Blaze DynFocusNumImages', '4'),
+    ('Blaze EmWavelength0', '805'),
+    ('Blaze EmWavelength1', '680'),
+    ('Blaze EmWavelength2', '595'),
+    ('Blaze EmWavelength3', '525'),
+    ('Blaze EmWavelength4', '460'),
+    ('Blaze EmWavelength5', '561'),
+    ('Blaze EmWavelength6', '785'),
+    ('Blaze EmWavelength7', '620'),
+    ('Blaze EmWavelength8', '620'),
+    ('Blaze EmWavelength9', '620'),
+    ('Blaze ExBeamWaist', '3.600000'),
+    ('Blaze ExWavelength0', '785'),
+    ('Blaze ExWavelength1', '640'),
+    ('Blaze ExWavelength2', '561'),
+    ('Blaze ExWavelength3', '488'),
+    ('Blaze ExWavelength4', '405'),
+    ('Blaze ExWavelength5', '561'),
+    ('Blaze ExWavelength6', '785'),
+    ('Blaze ExWavelength7', '561'),
+    ('Blaze ExWavelength8', '561'),
+    ('Blaze ExWavelength9', '561'),
+    ('Blaze ExpTime0', '100.000000'),
+    ('Blaze ExpTime1', '149.999176'),
+    ('Blaze ExpTime2', '100.000000'),
+    ('Blaze ExpTime3', '149.999176'),
+    ('Blaze ExpTime4', '100.000000'),
+    ('Blaze ExpTime5', '100.000000'),
+    ('Blaze ExpTime6', '100.000000'),
+    ('Blaze ExpTime7', '100.000000'),
+    ('Blaze ExpTime8', '100.000000'),
+    ('Blaze ExpTime9', '100.000000'),
+    ('Blaze ExtLaser', '1'),
+    ('Blaze ExtLaserImpl', 'Laser combiner'),
+    ('Blaze FilterInMeasurement0', '0'),
+    ('Blaze FilterInMeasurement1', '0'),
+    ('Blaze FilterInMeasurement2', '1'),
+    ('Blaze FilterInMeasurement3', '1'),
+    ('Blaze FilterInMeasurement4', '0'),
+    ('Blaze FilterInMeasurement5', '0'),
+    ('Blaze FilterInMeasurement6', '0'),
+    ('Blaze FilterInMeasurement7', '0'),
+    ('Blaze FilterInMeasurement8', '0'),
+    ('Blaze FilterInMeasurement9', '0'),
+    ('Blaze GlobalExpTime', '150.014008'),
+    ('Blaze HorzMode', '2'),
+    ('Blaze IndividualExpTimes', '0'),
+    ('Blaze LRI', '1.558000'),
+    ('Blaze LaserName0', '785'),
+    ('Blaze LaserName1', '640'),
+    ('Blaze LaserName2', '561'),
+    ('Blaze LaserName3', '488'),
+    ('Blaze LaserName4', '405'),
+    ('Blaze LaserName5', '561'),
+    ('Blaze LaserName6', '785'),
+    ('Blaze LaserName7', '561'),
+    ('Blaze LaserName8', '561'),
+    ('Blaze LaserName9', '561'),
+    ('Blaze Liquid', 'MACS IS'),
+    ('Blaze Liquids', 'CUBIC R2;DBE;ECi;H2O;MACS IS;Milk'),
+    ('Blaze NA', '0.162765'),
+    ('Blaze Objective', 'LVBT 4x'),
+    ('Blaze ObjectiveMagnification', '4.000000'),
+    ('Blaze ObjectiveNA', '0.350000'),
+    ('Blaze PowerInfo0', '21'),
+    ('Blaze PowerInfo1', '55'),
+    ('Blaze PowerInfo2', '10'),
+    ('Blaze PowerInfo3', '20'),
+    ('Blaze PowerInfo4', '13'),
+    ('Blaze PowerInfo5', '1'),
+    ('Blaze PowerInfo6', '9'),
+    ('Blaze PowerInfo7', '43'),
+    ('Blaze PowerInfo8', '43'),
+    ('Blaze PowerInfo9', '43'),
+    ('Blaze SelSheets', 'Right light sheet'),
+    ('Blaze SelectedFilterIndex', '3'),
+    ('Blaze SheetMergeAlg', 'Adaptive Blending'),
+    ('Blaze SheetThickness', '3.912724'),
+    ('Blaze SheetWidthPercent', '100.000000'),
+    ('Blaze XRes', '2048'),
+    ('Blaze YRes', '2048'),
+    ('Blaze dev12name', 'MagnificationChanger'),
+    ('Blaze dev8name', 'Detection-FW'),
+    ('Blaze dev8step0name', '460/40'),
+    ('Blaze dev8step1name', '525/50'),
+    ('Blaze dev8step2name', '620/60'),
+    ('Blaze dev8step3name', '680/30'),
+    ('Blaze dev8step4name', '805LP'),
+    ('Blaze dev8step5name', 'empty'),
+    ('Blaze dev8step6name', 'empty'),
+    ('Blaze dev8step7name', 'Position_7'),
+    ('Blaze dev8step8name', 'Position_8'),
+    ('Blaze dev8step9name', 'Position_9'),
+    ('Camera FullXLen', '13312.000000'),
+    ('Camera Info', 'Camera: pco.edge 4.2 M CLHS rolling shutter (s/n: 61010487)  Hardware 00: (MAIN 0015001730) 0.19 [variant: 20] Hardware 01: (HEAD 0013208441) 1.01 [variant: 6] Hardware 02: (IF   0010301716) 2.03 [variant: 1]  Firmware 00: (LADRA) 2.42 [variant: 20] Firmware 01: (MIDIR) 1.30 [variant: 20] Firmware 02: (CAMAL) 0.22 [variant: 20] Firmware 03: (LODAN) 0.11 [variant: 20] Firmware 04: (DAGDA) 1.02 [variant: 20] Firmware 05: (BRESS) 1.00 [variant: 20] Firmware 06: (NUADA) 1.00 [variant: 20] Firmware 07: (KRIOS) 1.00 [variant: 20] '),
+    ('Camera ROIRight', '2048'),
+    ('Camera SerialNumber', '61010487'),
+    ('Camera XBin', '1'),
+    ('Camera YBin', '1'),
+    ('Camera exp', '150.017990'),
+    ('xyz-Table UserRequestedOverlapInPercent', '1092616192'),
+    ('xyz-Table UserRequestedOverlapInPercentX', '10.000000'),
+    ('xyz-Table UserRequestedOverlapInPercentY', '10.000000'),
+    ('xyz-Table XRes', '2'),
+    ('xyz-Table XYOvl', '10.000000'),
+    ('xyz-Table YRes', '2'),
+]
+
+BLAZE_TWOCOLOUR_OME = f"""<?xml version="1.0" encoding="UTF-8"?>
+<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06">
+<Image ID="Image:0" Name="11-14-17_Alg_tl_4X_1Z_2Colormosaic_Blaze[00 x 00]_C00.ome.tif">
+  <AcquisitionDate>2026-08-12T11:13:16</AcquisitionDate>
+  <Description>not_specified</Description>
+  <Pixels BigEndian="false" DimensionOrder="XYZCT" ID="Pixels:0" Interleaved="false"
+          PhysicalSizeX="1.625" PhysicalSizeXUnit="&#181;m"
+          PhysicalSizeY="1.625" PhysicalSizeYUnit="&#181;m"
+          PhysicalSizeZ="2.0" PhysicalSizeZUnit="&#181;m"
+          SignificantBits="16" SizeC="2" SizeT="1" SizeX="2048" SizeY="2048"
+          SizeZ="12" Type="uint16">
+    <Channel ID="Channel:0:0" SamplesPerPixel="1"><LightPath/></Channel>
+    <Channel ID="Channel:0:1" SamplesPerPixel="1"><LightPath/></Channel>
+    <TiffData FirstC="0" FirstZ="0"/>
+  </Pixels>
+  <AnnotationRef ID="Annotation:CustomAttributes1"/>
+</Image>
+<StructuredAnnotations>
+  <XMLAnnotation ID="Annotation:CustomAttributes1"><Value>
+    <SerialNumber SerialNumber="UM-3140"/>
+    <InstrumentMode InstrumentMode="Ultramicroscope Expert"/>
+    <MeasurementMode MeasurementMode="Multi Color Mosaic Acquisition"/>
+    <ImspectorVersion ImspectorVersion="Imspector Pro 8.0.3"/>
+  </Value></XMLAnnotation>
+  <XMLAnnotation ID="Annotation:CustomAttributes2"><Value>
+    {_escape_props(BLAZE_TWOCOLOUR_PROPS)}
+  </Value></XMLAnnotation>
+</StructuredAnnotations>
+</OME>
+"""

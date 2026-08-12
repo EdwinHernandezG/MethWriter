@@ -128,6 +128,10 @@ channel_values:
   detector.manufacturer: Carl Zeiss Microscopy
 ```
 
+A profile also carries the facility details used by the acknowledgement
+(`extras.facility.name`, `extras.facility.grant`), so the generated text names
+your core and your instrument instead of leaving placeholders.
+
 An `overrides:` block replaces values the file itself supplies — the escape
 hatch for vendor fields known to be wrong. Every override is recorded in the
 report ("file said 0.1, profile says 0.35"), so a corrected value is never
@@ -206,6 +210,16 @@ software. Expect to adjust attribute names for:
   `ExWave`/`EmWave` rather than `ExcitationWavelength`/`EmissionWavelength`,
   plane timing in a child element). Both vocabularies are read, and the report
   records which schema the file used. `tools/inspect_ome.py` prints it.
+- Blaze camera: the `Camera Info` property names the detector outright
+  (e.g. `pco.edge 4.2 M CLHS rolling shutter (s/n: 61010487)`), so model,
+  manufacturer, serial and shutter mode are read from the file rather than
+  configured. The sensor pitch is derived from `Camera FullXLen / ROIRight`.
+- Blaze dipping systems: the sample is submerged in the imaging chamber, so
+  there is no cover glass and the imaging medium *is* the mounting medium. The
+  reader answers both checklist items from `Blaze Liquid` rather than leaving
+  them open. Channels are always sequential (one illumination path), and the
+  file name encodes tile position, channel and z plane
+  (`..._Blaze[00 x 01]_C01_xyz-Table Z0034.ome.tif`).
 - Blaze: property names are stable within an Imspector generation but not
   across them; the mapping lives in one table in `readers/imspector.py`.
   Note that `Blaze ObjectiveNA` frequently disagrees with the PSF calibration

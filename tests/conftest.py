@@ -63,3 +63,14 @@ def blaze_2008_file(tmp_path_factory) -> Path:
     return fixture_data.write_tiff(
         folder / "10-13-53_spaomtest1_Blaze_C00.ome.tif",
         fixture_data.BLAZE_2008_OME)
+
+
+@pytest.fixture(scope="session")
+def blaze_twocolour_file(tmp_path_factory) -> Path:
+    """A real two-colour Blaze mosaic: SizeC=2 with bare <Channel> elements."""
+    pytest.importorskip("tifffile")
+    pytest.importorskip("numpy")
+    folder = tmp_path_factory.mktemp("twocolour")
+    return fixture_data.write_tiff(
+        folder / "11-14-17_Alg_tl_4X_1Z_2Colormosaic_Blaze_C00.ome.tif",
+        fixture_data.BLAZE_TWOCOLOUR_OME)

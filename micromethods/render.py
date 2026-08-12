@@ -100,18 +100,31 @@ def _channel_label(rec: Record, idx: int) -> str:
 # methods prose
 # --------------------------------------------------------------------------
 
+def _is_dipping(rec: Record) -> bool:
+    """True when the sample sits in an imaging chamber rather than on glass."""
+    immersion = str(raw(rec.objective.immersion, "")).lower()
+    return "dipping" in immersion
+
+
 def specimen_paragraph(rec: Record) -> str:
     s = rec.specimen
     sentences = []
+    dipping = _is_dipping(rec)
     coverglass = _v(s.coverglass_no) or _v(s.coverglass_thickness_um, "µm")
     coating = _v(s.coverglass_coating)
-    if coverglass:
+    # On a dipping system there is no cover glass and no separate mountant:
+    # the sample is submerged in the imaging medium in the chamber. Saying
+    # "mounted on ... cover glass" there would be simply false.
+    if coverglass and not coverglass.lower().startswith("not applicable"):
         sentences.append(_sentence([
             f"samples were mounted on {coverglass} cover glass",
             f"coated with {coating}" if coating and coating != "not applicable" else "",
         ], sep=", "))
     medium = _v(s.mounting_medium)
-    if medium:
+    if medium and dipping:
+        sentences.append(_sentence([
+            f"samples were scanned submerged in {medium} as the imaging medium"]))
+    elif medium:
         man = _v(s.mounting_medium_manufacturer)
         sentences.append(_sentence(
             [f"prior to imaging, samples were mounted in {medium}",
@@ -148,17 +161,26 @@ def hardware_sentences(rec: Record) -> list[str]:
     immersion = _need(o.immersion, "immersion type")
     if not any(w in immersion.lower() for w in ("immersion", "dipping")):
         immersion = f"{immersion}-immersion"
+    medium = _v(o.immersion_medium)
     objective = _join([
         f"{_need(o.magnification, 'objective magnification')}x/"
         f"{_need(o.na, 'objective NA')}",
-        _v(o.correction) or MISSING.format("objective correction type"),
         immersion,
     ])
     detail = _join([designation, _v(o.manufacturer)], ", ")
     out.append(_sentence([
         f"imaging used {_article(objective)} {objective} objective",
         f"({detail})" if detail else "",
+        f"in {medium}" if medium else "",
     ]))
+    # Correction gets its own clause: for some systems it is a barrel marking,
+    # for others (light-sheet zoom bodies) a description of how the correction
+    # is achieved, and either reads badly wedged into the sentence above.
+    correction = _v(o.correction)
+    if correction:
+        out.append(_sentence([f"the objective provides {correction}"]))
+    else:
+        out.append(_sentence([MISSING.format("objective correction type")]))
     changer = _v(rec.stand.magnification_changer)
     if changer and changer.lower() not in ("none", "not applicable", "1", "1x"):
         out.append(_sentence([f"an additional {changer} magnification was used in the "
@@ -205,7 +227,10 @@ def channel_sentences(rec: Record) -> list[str]:
         excitation = _v(c.excitation_nm, "nm")
         detection = _v(c.detection_range_nm)
         filter_set = _v(c.filter_set)
-        detector = _join([_v(c.detector.kind), _v(c.detector.model)], " ")
+        # Avoid "sCMOS camera pco.edge 4.2": if the model is known, the generic
+        # kind only adds value when it says something the model does not.
+        kind, model = _v(c.detector.kind), _v(c.detector.model)
+        detector = f"{model} {kind}" if model and kind else _join([kind, model], " ")
         detector_man = _v(c.detector.manufacturer)
         emission_bits = ""
         window = c.detection_range_nm.value if c.detection_range_nm else None
@@ -305,13 +330,25 @@ _EXTRA_LABELS = {"lightsheet": "light-sheet settings",
 # reported in its own section instead of cluttering the paragraph.
 _PROSE_EXTRAS = ("lightsheet", "multiphoton", "illumination", "optics")
 
+# Field names are stored snake_case; these fragments are acronyms or proper
+# nouns and must not be lower-cased when a label is generated from the key.
+_ACRONYMS = {"na": "NA", "au": "AU", "fwhm": "FWHM", "psf": "PSF", "ri": "RI",
+             "roi": "ROI", "led": "LED", "pmt": "PMT", "tirf": "TIRF",
+             "2p": "2P", "uv": "UV", "id": "ID", "xy": "XY", "z": "z"}
+
+
+def _label(key: str) -> str:
+    """'sheet_na' -> 'sheet NA', 'excitation_beam_waist' -> 'excitation beam waist'."""
+    return " ".join(_ACRONYMS.get(word.lower(), word)
+                    for word in key.split("_"))
+
 
 def extras_sentences(rec: Record) -> list[str]:
     out = []
     for group, values in (rec.extras or {}).items():
         if not isinstance(values, dict) or group not in _PROSE_EXTRAS:
             continue
-        bits = [f"{k.replace('_', ' ')} {_vu(v) if isinstance(v, Value) else v}"
+        bits = [f"{_label(k)} {_vu(v) if isinstance(v, Value) else v}"
                 for k, v in values.items() if v is not None]
         if bits:
             label = _EXTRA_LABELS.get(group, group.replace("_", " ") + " settings")
@@ -344,11 +381,36 @@ def methods_text(rec: Record) -> str:
     return "\n\n".join(paragraphs)
 
 
-ACKNOWLEDGEMENT = (
-    "Imaging was performed at [core facility name]. We thank the facility for "
-    "access to [instrument] and for support, and acknowledge [grant number] "
-    "for instrument funding."
-)
+DEFAULT_FACILITY = "[core facility name]"
+
+
+def acknowledgement(rec: Record | None = None) -> str:
+    """Acknowledgement text, with the facility and instrument filled in.
+
+    The facility name comes from the instrument profile (`facility.name`), so a
+    core writes it down once instead of every user editing the placeholder. The
+    instrument is named from the stand itself.
+    """
+    facility = DEFAULT_FACILITY
+    instrument = "[instrument]"
+    if rec is not None:
+        facility = _v(path_get(rec, "extras.facility.name")) or facility
+        model = _join([_v(rec.stand.manufacturer), _v(rec.stand.model)])
+        serial = _v(path_get(rec, "extras.instrument.serial_number"))
+        if model:
+            instrument = f"the {model}" + (f" (serial {serial})" if serial else "")
+        elif rec.instrument_key:
+            instrument = rec.instrument_key.replace("_", " ")
+    grant = "[grant number]"
+    if rec is not None:
+        grant = _v(path_get(rec, "extras.facility.grant")) or grant
+    return (f"Imaging was performed at {facility}. We thank the facility for "
+            f"access to {instrument} and for support, and acknowledge {grant} "
+            f"for instrument funding.")
+
+
+# Kept for callers that want the unfilled template.
+ACKNOWLEDGEMENT = acknowledgement()
 
 
 # --------------------------------------------------------------------------
@@ -412,7 +474,7 @@ def report_markdown(rec: Record, report: Report) -> str:
         "",
         "## Acknowledgements (template)",
         "",
-        ACKNOWLEDGEMENT,
+        acknowledgement(rec),
         "",
         "## Reporting checklist",
         "",
@@ -430,9 +492,8 @@ def report_markdown(rec: Record, report: Report) -> str:
         for group, values in other.items():
             for key, value in values.items():
                 if isinstance(value, Value):
-                    out.append(f"| {group.replace('_', ' ')} | "
-                               f"{key.replace('_', ' ')} | {_vu(value)} | "
-                               f"{value.source.value} |")
+                    out.append(f"| {_label(group)} | {_label(key)} | "
+                               f"{_vu(value)} | {value.source.value} |")
         out.append("")
 
     if missing:

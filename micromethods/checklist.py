@@ -112,14 +112,16 @@ REQUIREMENTS: list[Requirement] = [
     # ---------------- Specimen set-up ----------------
     Requirement(
         "specimen.coverglass_no", "Specimen set-up", "Sample mounting",
-        "Cover glass number/thickness and any coating",
+        "Cover glass number/thickness and any coating; enter 'not applicable' "
+        "if the sample is submerged in an imaging chamber",
         "#1.5H cover glass (Marienfeld), coated with 1 mg/ml collagen type I",
         "CoverGlass/CoverGlassNo, CoverGlass/Thickness, CoverGlass/Coating",
         Level.REQUIRED, Scope.SPECIMEN,
     ),
     Requirement(
         "specimen.mounting_medium", "Specimen set-up", "Sample mounting",
-        "Mounting or imaging medium (name and manufacturer)",
+        "Mounting or imaging medium (name and manufacturer); for a dipping "
+        "system, the medium filling the imaging chamber",
         "SlowFade Glass mounting medium (Thermo Fisher Scientific)",
         "MountingMedium/Model, MountingMedium/Manufacturer",
         Level.REQUIRED, Scope.SPECIMEN,
