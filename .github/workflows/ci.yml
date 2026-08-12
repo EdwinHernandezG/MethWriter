@@ -58,6 +58,15 @@ jobs:
       - name: Installation self-check
         run: micromethods doctor
 
+      - name: Show what the environment actually contains
+        # Printed unconditionally so a failing run downstream can be diagnosed
+        # from the log alone, without a second push to add debugging.
+        run: |
+          python -m pip --version
+          python -m pip show micromethods
+          python -c "import importlib.metadata as md, pathlib; [print('metadata:', getattr(d, '_path', '?')) for d in md.distributions() if (d.metadata['Name'] or '').lower() == 'micromethods']"
+          python -c "import site, sys; print('site-packages:', site.getsitepackages()); print('prefix:', sys.prefix)"
+
       - name: Tests
         # CI is set by GitHub Actions, which puts conftest.py into strict mode:
         # missing dependencies and source-tree-only installs become errors

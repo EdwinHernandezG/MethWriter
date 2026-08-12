@@ -66,49 +66,152 @@ def pytest_configure(config: pytest.Config) -> None:
         )
 
 
+def _distribution_locations(name: str = "micromethods") -> list[Path]:
+    """Every on-disk metadata directory the environment has for ``name``.
+
+    Returns an empty list when the distributions exist but expose no path,
+    which some editable-install finders do; callers must treat that as
+    "unknown", not as "missing".
+    """
+    import importlib.metadata as md
+
+    found: list[Path] = []
+    for dist in md.distributions():
+        try:
+            dist_name = (dist.metadata["Name"] or "")
+        except Exception:  # a malformed distribution elsewhere in site-packages
+            continue
+        if dist_name.lower().replace("-", "_") != name:
+            continue
+        path = getattr(dist, "_path", None)
+        if path is not None:
+            found.append(Path(str(path)).resolve())
+    return found
+
+
+def _site_packages_evidence(name: str = "micromethods") -> list[str]:
+    """Evidence in site-packages that the environment knows about ``name``.
+
+    Covers all three install styles, because failing a working build is worse
+    than missing a broken one:
+
+    * modern:  ``name-VERSION.dist-info/`` plus an ``__editable__*.pth``;
+    * legacy:  ``name.egg-link`` referencing the source tree;
+    * plain:   an installed ``name/`` package directory.
+    """
+    import site
+    import sys
+
+    candidates: list[Path] = []
+    for getter in ("getsitepackages", "getusersitepackages"):
+        try:
+            value = getattr(site, getter)()
+        except Exception:
+            continue
+        candidates.extend(Path(v) for v in ([value] if isinstance(value, str) else value))
+    candidates.append(Path(sys.prefix) / "lib" / "site-packages")
+
+    hits: list[str] = []
+    for folder in candidates:
+        if not folder.is_dir():
+            continue
+        try:
+            entries = list(folder.iterdir())
+        except OSError:
+            continue
+        for entry in entries:
+            lowered = entry.name.lower()
+            if lowered.startswith(f"{name}-") and lowered.endswith(".dist-info"):
+                hits.append(str(entry))
+            elif lowered in (f"{name}.egg-link", f"{name}.pth"):
+                hits.append(str(entry))
+            elif lowered.startswith("__editable__") and name in lowered:
+                hits.append(str(entry))
+            elif entry.name == name and entry.is_dir():
+                hits.append(str(entry))
+    return hits
+
+
+def _environment_summary(config: pytest.Config) -> str:
+    """Everything needed to diagnose an install problem from a CI log alone."""
+    import shutil
+    import sys
+
+    import micromethods
+
+    lines = [
+        f"    python      {sys.executable}",
+        f"    prefix      {sys.prefix}",
+        f"    rootdir     {config.rootpath}",
+        f"    imported    {Path(micromethods.__file__).resolve().parent}",
+        f"    console     {shutil.which('micromethods') or 'not on PATH'}",
+    ]
+    locations = _distribution_locations()
+    if locations:
+        for location in locations:
+            lines.append(f"    metadata    {location}")
+    else:
+        lines.append("    metadata    none found on sys.path")
+    for evidence in _site_packages_evidence():
+        lines.append(f"    installed   {evidence}")
+    return "\n".join(lines)
+
+
 def _require_real_installation(config: pytest.Config) -> None:
     """Fail unless the package is genuinely installed in this environment.
 
-    Two things masquerade as an installation and must not be accepted:
+    Two things masquerade as an installation:
 
     * running pytest from the repository root puts the source tree on
       sys.path, so ``import micromethods`` succeeds regardless;
     * a leftover ``micromethods.egg-info/`` directory from an earlier build
-      provides distribution metadata even after an uninstall.
+      provides metadata even after an uninstall.
 
-    Neither gives a working console script or a discoverable napari plugin, so
-    accepting them would let CI pass on an installation that fails for users.
+    Neither gives a working console script or a discoverable napari plugin.
+    The check is deliberately conservative: it only fails on positive evidence
+    of a problem, because a false alarm here blocks a working build.
     """
     import importlib.metadata as md
 
-    root = Path(str(config.rootpath)).resolve()
-    locations = []
-    for dist in md.distributions():
-        if (dist.metadata["Name"] or "").lower().replace("-", "_") != "micromethods":
-            continue
-        path = getattr(dist, "_path", None)
-        if path is not None:
-            locations.append(Path(str(path)).resolve())
-
-    if not locations:
+    try:
+        md.distribution("micromethods")
+    except md.PackageNotFoundError:
         raise pytest.UsageError(
-            "micromethods imports from the source tree but is not installed "
-            "in this environment: there is no distribution metadata, so the "
-            "console script and the napari plugin will not work.\n"
+            "micromethods imports from the source tree but is not installed in "
+            "this environment, so the console script and the napari plugin "
+            "will not work.\n\n"
+            f"{_environment_summary(config)}\n\n"
+            "Install it from the directory holding pyproject.toml:\n"
             '    python -m pip install -e ".[test]"'
-        )
+        ) from None
+    except Exception:
+        # Metadata exists but could not be read cleanly; not worth failing on.
+        return
+
+    locations = _distribution_locations()
+    if not locations:
+        # Installed, but the finder exposes no path. Nothing to verify.
+        return
 
     # An editable install legitimately leaves an .egg-info directory in the
     # source tree *as well as* a .dist-info in site-packages. Only the latter
-    # proves the environment knows about the package; if the in-tree residue
-    # is all there is, the install did not happen (or was uninstalled and the
-    # residue left behind, which is what makes this failure so confusing).
+    # proves the environment knows about the package; if the in-tree residue is
+    # all there is, the install did not happen, or was uninstalled and the
+    # residue left behind - which is what makes this failure so confusing.
+    root = Path(str(config.rootpath)).resolve()
     if all(location.parent == root for location in locations):
+        # A legacy editable install also keeps its metadata in the source tree,
+        # linking to it from site-packages. Only complain when site-packages
+        # knows nothing about the package at all.
+        if _site_packages_evidence():
+            return
         names = ", ".join(sorted(p.name for p in locations))
         raise pytest.UsageError(
-            f"The only distribution metadata found is build residue in the "
+            f"The only distribution metadata is build residue in the "
             f"repository root ({names}), not an installation in this "
-            "environment. Remove it and install properly:\n"
+            "environment.\n\n"
+            f"{_environment_summary(config)}\n\n"
+            "Remove the residue and install properly:\n"
             f"    rm -rf {names}\n"
             '    python -m pip install -e ".[test]"'
         )

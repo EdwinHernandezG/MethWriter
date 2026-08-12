@@ -77,3 +77,20 @@ def test_checklist_paths_all_resolve():
             if path.startswith("extras."):
                 continue  # created on demand
             path_get(record, path)  # must not raise
+
+
+def test_installation_guard_accepts_this_environment(pytestconfig):
+    """The guard that runs at collection time must not reject a working
+    install. It is deliberately conservative, because a false alarm blocks a
+    build that would have worked."""
+    from tests.conftest import _require_real_installation
+
+    _require_real_installation(pytestconfig)  # must not raise
+
+
+def test_installation_guard_reports_something_useful(pytestconfig):
+    from tests.conftest import _environment_summary
+
+    summary = _environment_summary(pytestconfig)
+    for field in ("python", "prefix", "rootdir", "imported"):
+        assert field in summary
